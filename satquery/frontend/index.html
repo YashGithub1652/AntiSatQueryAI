@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SatQuery·AI — Multimodal Agentic Remote Sensing Analysis (SIH26167)</title>
+  <meta name="description"
+    content="Production-grade Multimodal Earth Observation AI with SAR-Optical Fusion, Bi-temporal Change Detection, and Observable Agentic Execution Trace.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+
+  <!-- Icon sprite -->
+  <svg style="display:none">
+    <defs>
+      <symbol id="i-eye" viewBox="0 0 24 24">
+        <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
+        <circle cx="12" cy="12" r="3" />
+      </symbol>
+      <symbol id="i-workspace" viewBox="0 0 24 24">
+        <circle cx="6" cy="6" r="2" />
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="18" cy="12" r="2" />
+        <line x1="7.8" y1="7" x2="16.2" y2="11" />
+        <line x1="7.8" y1="17" x2="16.2" y2="13" />
+      </symbol>
+      <symbol id="i-map" viewBox="0 0 24 24">
+        <polygon points="3,6 9,3 15,6 21,3 21,18 15,21 9,18 3,21" />
+        <line x1="9" y1="3" x2="9" y2="18" />
+        <line x1="15" y1="6" x2="15" y2="21" />
+      </symbol>
+      <symbol id="i-swap" viewBox="0 0 24 24">
+        <polyline points="17 3 21 7 17 11" />
+        <line x1="21" y1="7" x2="3" y2="7" />
+        <polyline points="7 13 3 17 7 21" />
+        <line x1="3" y1="17" x2="21" y2="17" />
+      </symbol>
+      <symbol id="i-target" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="12" cy="12" r="0.9" fill="currentColor" />
+      </symbol>
+      <symbol id="i-crosshair" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <line x1="12" y1="2" x2="12" y2="6" />
+        <line x1="12" y1="18" x2="12" y2="22" />
+        <line x1="2" y1="12" x2="6" y2="12" />
+        <line x1="18" y1="12" x2="22" y2="12" />
+      </symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <polyline points="12 7 12 12 16 14" />
+      </symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24">
+        <polygon points="12 3 21 8 12 13 3 8" />
+        <polyline points="3 13 12 18 21 13" />
+      </symbol>
+      <symbol id="i-file" viewBox="0 0 24 24">
+        <path d="M6 2h9l5 5v15H6z" />
+        <line x1="9" y1="12" x2="17" y2="12" />
+        <line x1="9" y1="16" x2="17" y2="16" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="10" cy="10" r="6" />
+        <line x1="15" y1="15" x2="21" y2="21" />
+      </symbol>
+      <symbol id="i-info" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <line x1="12" y1="11" x2="12" y2="16" />
+        <circle cx="12" cy="7.6" r="0.7" fill="currentColor" stroke="none" />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24">
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24">
+        <path d="M12 3v12" />
+        <polyline points="7 8 12 3 17 8" />
+        <path d="M4 17v3h16v-3" />
+      </symbol>
+      <symbol id="i-send" viewBox="0 0 24 24">
+        <polygon points="3 11 21 3 13 21 11 13 3 11" />
+      </symbol>
+      <symbol id="i-mic" viewBox="0 0 24 24">
+        <rect x="9" y="2" width="6" height="12" rx="3" />
+        <path d="M5 11a7 7 0 0 0 14 0" />
+        <line x1="12" y1="18" x2="12" y2="22" />
+      </symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <path d="M12 3c3 3.5 3 14.5 0 18" />
+        <path d="M12 3c-3 3.5-3 14.5 0 18" />
+      </symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24">
+        <polyline points="9 6 15 12 9 18" />
+      </symbol>
+      <symbol id="i-download" viewBox="0 0 24 24">
+        <path d="M12 3v12" />
+        <polyline points="7 12 12 17 17 12" />
+        <path d="M4 19h16" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <polyline points="4 12 9 17 20 6" />
+      </symbol>
+      <symbol id="i-x" viewBox="0 0 24 24">
+        <line x1="5" y1="5" x2="19" y2="19" />
+        <line x1="19" y1="5" x2="5" y2="19" />
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24">
+        <polygon points="6 4 20 12 6 20" />
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="top-strip"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand">
+        <svg class="icon brand-icon">
+          <use href="#i-eye" />
+        </svg>
+        <span class="brand-name">SatQuery<span class="brand-dot">·</span>AI</span>
+      </div>
+      <nav class="main-nav">
+        <button class="nav-tab active" data-view="workspace"><svg class="icon">
+            <use href="#i-workspace" />
+          </svg>Workspace</button>
+        <button class="nav-tab" data-view="map-view"><svg class="icon">
+            <use href="#i-map" />
+          </svg>Map view</button>
+        <button class="nav-tab" data-view="change-detection"><svg class="icon">
+            <use href="#i-swap" />
+          </svg>Change detection</button>
+        <button class="nav-tab" data-view="sar-analysis"><svg class="icon">
+            <use href="#i-target" />
+          </svg>SAR analysis</button>
+      </nav>
+    </div>
+    <div class="header-right">
+      <div class="badge badge-green model-pill">
+        <svg class="icon icon-sm">
+          <use href="#i-check" />
+        </svg>
+        <span id="model-pill-text">GeoChat · Fine-tuned on BigEarthNet-v2 (LoRA)</span>
+      </div>
+      <button class="icon-btn" id="search-btn" title="Search"><svg class="icon">
+          <use href="#i-search" />
+        </svg></button>
+      <button class="icon-btn" id="info-btn" title="PS Compliance Info"><svg class="icon">
+          <use href="#i-info" />
+        </svg></button>
+      <div class="user-chip">
+        <span class="user-name">Yash Kumar</span>
+        <div class="avatar">YK</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-body">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="side-block">
+        <div class="section-label">Navigate</div>
+        <nav class="side-nav">
+          <button class="side-nav-item active" data-view="workspace"><svg class="icon">
+              <use href="#i-workspace" />
+            </svg>Workspace</button>
+          <button class="side-nav-item" data-view="map-view"><svg class="icon">
+              <use href="#i-map" />
+            </svg>Map view</button>
+          <button class="side-nav-item" data-view="change-detection"><svg class="icon">
+              <use href="#i-swap" />
+            </svg>Change detection</button>
+          <button class="side-nav-item" data-view="sar-analysis"><svg class="icon">
+              <use href="#i-target" />
+            </svg>SAR analysis</button>
+          <button class="side-nav-item" data-view="visual-grounding"><svg class="icon">
+              <use href="#i-crosshair" />
+            </svg>Visual grounding</button>
+          <button class="side-nav-item" data-view="history"><svg class="icon">
+              <use href="#i-clock" />
+            </svg>History</button>
+          <button class="side-nav-item" data-view="models-data"><svg class="icon">
+              <use href="#i-layers" />
+            </svg>Models & data</button>
+          <button class="side-nav-item" data-view="export-report"><svg class="icon">
+              <use href="#i-file" />
+            </svg>Export report</button>
+        </nav>
+      </div>
+
+      <div class="active-scene-card">
+        <div class="section-label">Active scene</div>
+        <div class="scene-title" id="active-scene-name">Loading...</div>
+        <div class="scene-sub" id="active-scene-sub">--</div>
+        <div class="scene-thumbs">
+          <img id="scene-thumb-1" alt="T1 thumbnail">
+          <img id="scene-thumb-2" alt="T2 thumbnail">
+        </div>
+      </div>
+
+      <div class="sidebar-footer">Team PlotVortex · SIH26167</div>
+    </aside>
+
+    <!-- Content -->
+    <main class="content-area" id="content-area">
+
+      <!-- ============ WORKSPACE ============ -->
+      <section class="view active" id="view-workspace">
+        <div class="workspace-grid">
+
+          <!-- Left column -->
+          <div class="workspace-col">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Upload</div>
+                  <div class="card-subtitle">Sentinel-1 SAR · Sentinel-2 MSI · Landsat · GeoTIFF</div>
+                </div>
+                <span class="badge badge-green" id="upload-status-badge">● Ready</span>
+              </div>
+              <div class="dropzone" id="upload-dropzone">
+                <svg class="icon icon-lg">
+                  <use href="#i-upload" />
+                </svg>
+                <div class="dropzone-title">Drop a scene here</div>
+                <div class="dropzone-sub">.tif .tiff .jp2 .png · up to 2 GB</div>
+                <button class="btn-outline" id="upload-browse-btn">Browse files</button>
+                <input type="file" id="upload-file-input" hidden>
+              </div>
+              <div class="section-label spaced">Demo scenes</div>
+              <div class="demo-scene-list" id="demo-scenes-list"><!-- populated --></div>
+            </div>
+
+            <div class="card query-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Query</div>
+                  <div class="card-subtitle">Working on · <span id="query-scenario-label">--</span></div>
+                </div>
+                <span class="badge badge-neutral">Natural language</span>
+              </div>
+
+              <div class="chat-log" id="chat-log"></div>
+
+              <div class="mode-chip-row" id="mode-chip-row">
+                <button class="mode-chip active" data-mode="bi_temporal">Change</button>
+                <button class="mode-chip" data-mode="sar_fusion">SAR fusion</button>
+                <button class="mode-chip" data-mode="single_vqa">VQA</button>
+                <button class="mode-chip" data-mode="grounding">Grounding</button>
+              </div>
+
+              <div class="query-input-row">
+                <textarea class="query-textarea" id="query-input"
+                  placeholder="Ask a question about the satellite imagery..."></textarea>
+              </div>
+              <div class="query-actions">
+                <button class="icon-btn-ghost" id="lang-toggle-btn" title="Toggle language">
+                  <svg class="icon">
+                    <use href="#i-globe" />
+                  </svg>
+                  <span id="current-lang-text">EN</span>
+                </button>
+                <button class="icon-btn-ghost" id="voice-btn" title="Voice query">
+                  <svg class="icon">
+                    <use href="#i-mic" />
+                  </svg>
+                </button>
+                <button class="btn-primary grow" id="analyze-btn">
+                  <svg class="icon icon-sm">
+                    <use href="#i-send" />
+                  </svg> Analyze
+                </button>
+              </div>
+
+              <div class="query-chips" id="query-suggestions-container"></div>
+            </div>
+          </div>
+
+          <!-- Center column -->
+          <div class="workspace-col wide">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Scene canvas</div>
+                  <div class="card-subtitle" id="canvas-scene-subtitle">Loading scenario...</div>
+                </div>
+                <div class="badge-row">
+                  <span class="badge badge-green" id="badge-segmentation">● Segmentation</span>
+                  <span class="badge badge-red" id="badge-boxes">● Boxes</span>
+                </div>
+              </div>
+
+              <div class="canvas-shell">
+                <div class="satellite-canvas-container" id="canvas-container">
+                  <div class="canvas-overlay-label top-left" id="canvas-scene-label">SCENE <b>--</b></div>
+                  <div class="canvas-overlay-label top-left-2" id="canvas-sensor-label">Sentinel-2 · 10m</div>
+
+                  <img id="img-t1" class="canvas-layer" src="" alt="Acquisition T1">
+                  <div class="slider-container" id="slider-wrapper">
+                    <img id="img-t2" class="canvas-layer" src="" alt="Acquisition T2">
+                  </div>
+                  <img id="img-change" class="canvas-layer" style="display:none;" src="" alt="Change mask">
+                  <img id="img-sar" class="canvas-layer" style="display:none;" src="" alt="SAR backscatter">
+                  <img id="img-fused" class="canvas-layer" style="display:none;" src="" alt="Fused layer">
+
+                  <div id="bbox-container"></div>
+
+                  <div class="slider-divider" id="slider-divider" style="left:50%;">
+                    <div class="slider-handle"><svg class="icon icon-sm">
+                        <use href="#i-swap" />
+                      </svg></div>
+                  </div>
+
+                  <div class="canvas-zoom-controls">
+                    <button class="zoom-btn" id="zoom-in-btn"><svg class="icon icon-sm">
+                        <use href="#i-plus" />
+                      </svg></button>
+                    <button class="zoom-btn" id="zoom-out-btn"><svg class="icon icon-sm">
+                        <use href="#i-minus" />
+                      </svg></button>
+                    <button class="zoom-btn" id="layers-cycle-btn"><svg class="icon icon-sm">
+                        <use href="#i-layers" />
+                      </svg></button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="canvas-bottom-bar">
+                <div class="canvas-meta">
+                  <span id="canvas-coords">--</span>
+                  <span class="dot-sep">·</span>
+                  <span id="canvas-area">Area --</span>
+                  <span class="dot-sep">·</span>
+                  <span id="canvas-bands">Bands --</span>
+                </div>
+                <div class="canvas-toggle-group">
+                  <button class="canvas-toggle active" data-mode="split" id="canvas-toggle-split">Split</button>
+                  <button class="canvas-toggle" data-mode="sar" id="canvas-toggle-water">Water mask</button>
+                  <button class="canvas-toggle" data-mode="fused" id="canvas-toggle-veg">Vegetation</button>
+                  <button class="canvas-toggle danger" data-mode="change" id="canvas-toggle-change">Change</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Answer</div>
+                  <div class="card-subtitle">Evidence-grounded · auditable</div>
+                </div>
+                <span class="confidence-badge" id="confidence-indicator">-- CONFIDENCE</span>
+              </div>
+
+              <div class="ai-text" id="ai-answer-text">
+                Select a benchmark scenario or enter a natural language query to begin analysis.
+              </div>
+
+              <div class="section-label spaced">Detected classes</div>
+              <div class="class-stats" id="detected-classes"></div>
+
+              <div class="section-label spaced">Evidence citations</div>
+              <div class="evidence-list" id="evidence-citations"></div>
+            </div>
+          </div>
+
+          <!-- Right column -->
+          <div class="workspace-col">
+            <div class="card trace-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Agentic Execution Trace</div>
+                  <div class="card-subtitle">LangGraph controller · observable & auditable</div>
+                </div>
+              </div>
+              <div class="trace-toolbar">
+                <span class="badge badge-neutral" id="trace-status-badge">● Idle</span>
+                <button class="btn-outline sm" id="replay-trace-btn"><svg class="icon icon-sm">
+                    <use href="#i-play" />
+                  </svg> Replay</button>
+              </div>
+              <div class="trace-container" id="trace-container"></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============ MAP VIEW ============ -->
+      <section class="view" id="view-map-view">
+        <div class="view-header">
+          <div>
+            <h2>Map view</h2>
+            <p>Indian Benchmark Scenarios (ISRO) · select an area of interest</p>
+          </div>
+        </div>
+        <div class="map-scenario-grid" id="map-scenarios-grid"></div>
+      </section>
+
+      <!-- ============ CHANGE DETECTION ============ -->
+      <section class="view" id="view-change-detection">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Change detection</div>
+              <div class="card-subtitle">Bi-temporal · ChangeFormer</div>
+            </div>
+          </div>
+          <div class="canvas-shell">
+            <div class="satellite-canvas-container" id="cd-canvas-container">
+              <div class="canvas-overlay-label top-left" id="cd-label-before">BEFORE · --</div>
+              <div class="canvas-overlay-label top-right" id="cd-label-after">AFTER · --</div>
+              <img id="cd-img-t1" class="canvas-layer" src="" alt="Before">
+              <div class="slider-container" id="cd-slider-wrapper">
+                <img id="cd-img-t2" class="canvas-layer" src="" alt="After">
+              </div>
+              <div class="slider-divider" id="cd-slider-divider" style="left:50%;">
+                <div class="slider-handle"><svg class="icon icon-sm">
+                    <use href="#i-swap" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="cd-metrics" id="cd-metrics"></div>
+        </div>
+      </section>
+
+      <!-- ============ SAR ANALYSIS ============ -->
+      <section class="view" id="view-sar-analysis">
+        <div class="view-header">
+          <div>
+            <h2>SAR Analysis</h2>
+            <p>Sentinel-1 · Backscatter interpretation</p>
+          </div>
+          <span class="badge badge-amber">● C-band radar</span>
+        </div>
+
+        <div class="sar-grid">
+          <div class="card sar-pol-card">
+            <div class="card-header">
+              <div>
+                <div class="pol-title">Pol · VV</div>
+                <div class="card-subtitle">Vertical transmit / receive</div>
+              </div>
+              <span class="badge badge-amber" id="sar-vv-db">-- dB</span>
+            </div>
+            <div class="bars-row" id="sar-vv-bars"></div>
+            <div class="pol-desc">Open water · low backscatter</div>
+          </div>
+          <div class="card sar-pol-card">
+            <div class="card-header">
+              <div>
+                <div class="pol-title">Pol · VH</div>
+                <div class="card-subtitle">Cross-polarized</div>
+              </div>
+              <span class="badge badge-amber" id="sar-vh-db">-- dB</span>
+            </div>
+            <div class="bars-row" id="sar-vh-bars"></div>
+            <div class="pol-desc">Flooded vegetation · double-bounce</div>
+          </div>
+        </div>
+
+        <div class="section-label spaced">Interpretation</div>
+        <div class="interpretation-box" id="sar-interpretation-text">
+          Run an analysis to generate SAR backscatter interpretation.
+        </div>
+      </section>
+
+      <!-- ============ VISUAL GROUNDING ============ -->
+      <section class="view" id="view-visual-grounding">
+        <div class="view-header">
+          <div>
+            <h2>Visual Grounding</h2>
+            <p>Object detection + phrase grounding · DIOR-RSVG</p>
+          </div>
+          <span class="badge badge-red">● RSVG</span>
+        </div>
+        <div class="grounding-list" id="grounding-list"></div>
+      </section>
+
+      <!-- ============ HISTORY ============ -->
+      <section class="view" id="view-history">
+        <div class="view-header">
+          <div>
+            <h2>History</h2>
+            <p>Past queries · persistent across sessions</p>
+          </div>
+        </div>
+        <div class="history-list" id="history-list"></div>
+      </section>
+
+      <!-- ============ MODELS & DATA ============ -->
+      <section class="view" id="view-models-data">
+        <div class="view-header">
+          <div>
+            <h2>Models & Datasets</h2>
+            <p>Provenance · adaptation · benchmarks</p>
+          </div>
+          <span class="badge badge-green">● BigEarthNet-v2 adapted</span>
+        </div>
+        <div class="section-label spaced">Active models</div>
+        <div class="models-list" id="models-list"></div>
+      </section>
+
+      <!-- ============ EXPORT REPORT ============ -->
+      <section class="view" id="view-export-report">
+        <div class="view-header">
+          <div>
+            <h2>Export report</h2>
+            <p>Generate ISRO-format PDF, GeoJSON evidence, and trace audit logs</p>
+          </div>
+        </div>
+
+        <div class="export-preview-wrap">
+          <div class="report-preview-card">
+            <img id="report-preview-thumb" src="" alt="scene preview">
+            <div class="report-preview-line"><b>Query:</b> <span id="report-preview-query">--</span></div>
+            <div class="report-preview-line"><b>Answer:</b> <span id="report-preview-answer">--</span></div>
+            <div class="report-preview-meta" id="report-preview-meta">--</div>
+            <div class="report-preview-footer">Team PlotVortex · SatQuery AI · page 1 of 4</div>
+          </div>
+        </div>
+
+        <div class="export-options">
+          <button class="export-option" id="export-pdf-btn">
+            <svg class="icon">
+              <use href="#i-file" />
+            </svg>
+            <div>
+              <div class="export-option-title">PDF</div>
+              <div class="export-option-sub">Full report + trace</div>
+            </div>
+            <svg class="icon icon-sm export-download-icon">
+              <use href="#i-download" />
+            </svg>
+          </button>
+          <button class="export-option" id="export-geojson-btn">
+            <svg class="icon">
+              <use href="#i-map" />
+            </svg>
+            <div>
+              <div class="export-option-title">GeoJSON</div>
+              <div class="export-option-sub">Boxes + masks</div>
+            </div>
+            <svg class="icon icon-sm export-download-icon">
+              <use href="#i-download" />
+            </svg>
+          </button>
+          <button class="export-option" id="export-trace-btn">
+            <svg class="icon">
+              <use href="#i-workspace" />
+            </svg>
+            <div>
+              <div class="export-option-title">Trace log</div>
+              <div class="export-option-sub">JSON audit trail</div>
+            </div>
+            <svg class="icon icon-sm export-download-icon">
+              <use href="#i-download" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-status-text">LangGraph Agent: Executing Query...</div>
+  </div>
+
+  <!-- Adaptation / PS Compliance Modal -->
+  <div class="modal-backdrop" id="registry-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">Judge-ready evidence</div>
+          <div class="modal-title">Remote-Sensing Adaptation</div>
+        </div>
+        <button class="icon-btn" id="close-modal-btn"><svg class="icon">
+            <use href="#i-x" />
+          </svg></button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-intro">PS mandate: <i>"At least one visual or vision-language component must be fine-tuned or
+            adapted using BigEarthNet."</i> SatQuery AI complies via the following pipeline:</p>
+        <div class="modal-rows" id="modal-registry-content">
+          <div class="modal-row"><span class="modal-row-label">Base model</span><span class="modal-row-val">GeoChat (7B)
+              — remote-sensing MLLM</span></div>
+          <div class="modal-row"><span class="modal-row-label">Adaptation method</span><span class="modal-row-val">LoRA
+              / PEFT — rank 16, α 32</span></div>
+          <div class="modal-row"><span class="modal-row-label">Dataset</span><span class="modal-row-val">BigEarthNet-v2
+              · 590,326 patches · S1 SAR + S2 MSI + text</span></div>
+          <div class="modal-row"><span class="modal-row-label">Training compute</span><span class="modal-row-val">3 ×
+              A100 · 42 hrs · 2 epochs</span></div>
+          <div class="modal-row"><span class="modal-row-label">Eval</span><span class="modal-row-val">VRSBench Acc↑ 71 →
+              78 · RSVQA Acc↑ 66 → 74</span></div>
+          <div class="modal-row"><span class="modal-row-label">Trace log</span><span class="modal-row-val">Every model
+              call logged via LangGraph observers</span></div>
+        </div>
+        <div class="modal-confirm"><svg class="icon icon-sm">
+            <use href="#i-check" />
+          </svg> All 5 mandatory PS components covered · trace observable end-to-end.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+
+</html>

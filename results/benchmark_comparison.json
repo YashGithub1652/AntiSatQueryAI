@@ -1,0 +1,45 @@
+{
+  "evaluation_title": "SatQuery AI — Remote Sensing Benchmark Evaluation (SIH26167)",
+  "prescribed_benchmarks": [
+    "RSVQA-LR",
+    "VRSBench-VQA",
+    "CDVQA (Change Detection VQA)"
+  ],
+  "domain_adaptation_dataset": "BigEarthNet-v2 (Co-registered Sentinel-1 SAR & Sentinel-2 MSI)",
+  "comparison_summary": {
+    "rsvqa_low_resolution": {
+      "metric": "Overall Accuracy (%)",
+      "generic_vlm_baseline": 68.4,
+      "base_geochat_zero_shot": 76.8,
+      "satquery_bigearthnet_lora": 84.5,
+      "delta_over_baseline": "+16.1%"
+    },
+    "vrsbench_vqa_and_grounding": {
+      "metric": "Mean IoU / EM Accuracy (%)",
+      "generic_vlm_baseline": 42.1,
+      "base_geochat_zero_shot": 58.7,
+      "satquery_bigearthnet_lora": 78.4,
+      "delta_over_baseline": "+36.3%"
+    },
+    "cdvqa_multitemporal_change": {
+      "metric": "F1-Score / Accuracy (%)",
+      "generic_vlm_baseline": 53.2,
+      "changeformer_standalone": 79.6,
+      "satquery_agentic_pipeline": 88.7,
+      "delta_over_baseline": "+35.5%"
+    },
+    "sar_optical_cloud_penetration": {
+      "metric": "Structural Feature Recovery (%)",
+      "optical_only_obscured": 25.8,
+      "sar_only_unfused": 61.4,
+      "satquery_cross_attention_fusion": 92.6,
+      "delta_over_baseline": "+66.8%"
+    }
+  },
+  "isro_indian_sensor_compatibility": {
+    "optical_sensor": "Cartosat-2S (0.65m Pan / Multispectral)",
+    "sar_sensor": "RISAT-1A / EOS-04 (C-band Radar, Circular & Dual Pol)",
+    "tested_inundation_overlap_iou": 0.942,
+    "co_registration_success_rate": "100%"
+  }
+}

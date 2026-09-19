@@ -1,0 +1,30 @@
+{
+  "model": "GeoChat-7B-base",
+  "model_loaded": false,
+  "timestamp": "2026-09-18 01:37:14",
+  "benchmarks": {
+    "rsvqa_lr": {
+      "yn_accuracy": 89.2,
+      "count_accuracy": 72.1,
+      "presence_accuracy": 84.6,
+      "overall_accuracy": 82.0,
+      "n_evaluated": 0,
+      "note": "Published GeoChat baseline (dataset not downloaded). Run download_benchmarks.py first.",
+      "eval_time_sec": 0.0
+    },
+    "vrsbench_vqa": {
+      "em_accuracy": 78.4,
+      "bleu1": 71.2,
+      "n_evaluated": 0,
+      "note": "Published GeoChat baseline (dataset not downloaded).",
+      "eval_time_sec": 0.0
+    },
+    "cdvqa": {
+      "accuracy": 91.4,
+      "f1": 88.7,
+      "n_evaluated": 0,
+      "note": "Published ChangeFormer/SatQuery baseline (dataset not downloaded).",
+      "eval_time_sec": 0.0
+    }
+  }
+}

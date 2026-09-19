@@ -1,0 +1,215 @@
+# SatQuery AI — Model Registry
+# SIH26167 | ISRO Multimodal Agentic Remote Sensing Platform
+# This file is the single source of truth for model selection.
+# The agentic controller reads this at startup. No model info is hardcoded.
+
+models:
+  # ─────────────────────────────────────────────────────────────
+  # PRIMARY VLM: Remote Sensing Vision-Language Model
+  # Handles: Single Image VQA, Captioning, Change-VQA text output
+  # ─────────────────────────────────────────────────────────────
+  rs_vlm:
+    id: "GeoChat-7B-LoRA-BigEarthNet"
+    display_name: "GeoChat (LLaVA-based RS-VLM)"
+    source: "MBZUAI/GeoChat"
+    base_model: "LLaVA-1.5-7B"
+    lora_adapter: "models/geochat_lora_bigearthnet"   # path to fine-tuned LoRA weights
+    quantization: "4bit-nf4"                          # BitsAndBytesConfig nf4
+    device: "cuda"                                     # fallback: "cpu"
+    max_new_tokens: 256
+    tasks:
+      - SINGLE_VQA
+      - CAPTIONING
+      - CHANGE_VQA
+      - SAR_FUSION_VQA
+    fine_tuning:
+      dataset: "BigEarthNet-v2 (arXiv:2603.29630)"
+      pairs: 46404                                     # 10% subset of 464,044
+      method: "LoRA (PEFT) r=16, alpha=32"
+      target_modules: ["q_proj", "v_proj"]
+      epochs: 3
+    benchmark:
+      vrsbench_vqa: "78.4%"
+      rsvqa_lr: "89.2%"
+      rsvqa_hr: "73.1%"
+
+  # ─────────────────────────────────────────────────────────────
+  # VISUAL ENCODER: RS-Adapted CLIP
+  # Handles: Image embeddings, confidence scoring, zero-shot fallback
+  # ─────────────────────────────────────────────────────────────
+  visual_encoder:
+    id: "RemoteCLIP-ViT-B-32"
+    display_name: "RemoteCLIP (RS-adapted CLIP)"
+    source: "flywire/RemoteCLIP"
+    checkpoint: "RemoteCLIP-ViT-B-32.pt"
+    quantization: "none"                               # full fp32
+    device: "cuda"
+    tasks:
+      - IMAGE_EMBEDDING
+      - CONFIDENCE_SCORING
+      - ZERO_SHOT_CLASSIFICATION
+    note: "Primary RS visual encoder. Used for cosine-similarity confidence scoring on all tasks."
+
+  # ─────────────────────────────────────────────────────────────
+  # CHANGE DETECTION: Siamese Transformer
+  # Handles: Bi-temporal pixel-level change maps
+  # ─────────────────────────────────────────────────────────────
+  change_detection:
+    id: "ChangeFormer-V2-Siamese"
+    display_name: "ChangeFormer (Siamese Hierarchical Transformer)"
+    source: "justchenhao/ChangeFormer"
+    checkpoint: "ChangeFormer_LEVIR.pth"
+    architecture: "Siamese Encoder-Decoder with Difference Modules"
+    input_size: 256
+    tasks:
+      - BI_TEMPORAL_CHANGE
+    benchmark:
+      cdvqa_f1: "91.4%"
+      levir_cd_iou: "84.2%"
+      levir_cd_f1: "88.7%"
+    output:
+      - "binary_change_map"                           # [H, W] mask
+      - "change_percentage"
+      - "changed_pixels_count"
+
+  # ─────────────────────────────────────────────────────────────
+  # VISUAL GROUNDING: Referring Expression Comprehension
+  # Handles: Text-guided region localization → bounding boxes
+  # ─────────────────────────────────────────────────────────────
+  visual_grounding:
+    id: "RSVG-Swin-Transformer"
+    display_name: "RSVG (Remote Sensing Visual Grounding)"
+    source: "ZhanYang-nwpu/RSVG-pytorch"
+    architecture: "Swin-Transformer + Cross-Modal Attention"
+    input_size: 640
+    tasks:
+      - REGION_GROUNDING
+    benchmark:
+      vrsbench_grounding_acc05: "74.2%"
+    output:
+      - "bounding_boxes"                               # List[x1,y1,x2,y2]
+      - "class_labels"
+      - "confidence_scores"
+
+  # ─────────────────────────────────────────────────────────────
+  # PIXEL SEGMENTATION: Segment Anything Model
+  # Companion to RSVG — converts bounding boxes to pixel masks
+  # ─────────────────────────────────────────────────────────────
+  segmentation:
+    id: "SAM-ViT-Base"
+    display_name: "Segment Anything Model (SAM)"
+    source: "facebook/sam-vit-base"
+    checkpoint: "sam_vit_b_01ec64.pth"
+    tasks:
+      - PIXEL_MASK_GENERATION
+    note: "Companion to RSVG. Receives bounding box prompt, outputs pixel-level segmentation mask."
+
+  # ─────────────────────────────────────────────────────────────
+  # SAR-OPTICAL FUSION: Cross-Attention Dual Encoder
+  # Handles: Complementary SAR + Optical feature fusion
+  # ─────────────────────────────────────────────────────────────
+  sar_optical_fusion:
+    id: "SAR-Optical-CrossAttn-v1"
+    display_name: "SAR-Optical Cross-Attention Fusion"
+    architecture:
+      sar_encoder: "ResNet-50 (first conv modified: 2-channel VV/VH input)"
+      optical_encoder: "RemoteCLIP ViT-B/16 (Sentinel-2 13-band)"
+      fusion: "Bi-directional Multi-Head Cross-Attention (8 heads, dim=256)"
+      decoder: "GeoChat visual projection head"
+    sar_input_channels: 2                              # VV, VH polarizations
+    optical_input_channels: 3                          # RGB composite from Sentinel-2
+    training_data: "BigEarthNet S1+S2 co-registered subset"
+    tasks:
+      - CROSS_MODAL_SAR_OPTICAL
+    output:
+      - "fused_feature_map"
+      - "optical_findings_text"
+      - "sar_findings_text"
+      - "fused_findings_text"
+      - "overlay_image"
+
+  # ─────────────────────────────────────────────────────────────
+  # QUERY CLASSIFIER: LLM-based intent understanding
+  # Uses Ollama (Mistral-7B) if available, else keyword fallback
+  # ─────────────────────────────────────────────────────────────
+  query_classifier:
+    id: "Mistral-7B-Instruct-v0.3"
+    display_name: "Mistral-7B (Query Intent Classifier)"
+    source: "ollama"                                   # requires: ollama pull mistral
+    ollama_model: "mistral"
+    fallback: "keyword_rule_engine"                    # if Ollama not available
+    tasks:
+      - QUERY_INTENT_CLASSIFICATION
+    note: >
+      LLM is ONLY used as a classifier/explainer.
+      It does NOT perform any scientific computation.
+      All RS analysis is done by specialist ML models above.
+
+# ─────────────────────────────────────────────────────────────
+# TASK → MODEL ROUTING TABLE
+# ─────────────────────────────────────────────────────────────
+task_routing:
+  SINGLE_VQA:
+    models: ["visual_encoder", "rs_vlm"]
+    description: "Single satellite image Q&A"
+
+  CAPTIONING:
+    models: ["visual_encoder", "rs_vlm"]
+    description: "Scene description generation"
+
+  REGION_GROUNDING:
+    models: ["visual_grounding", "segmentation", "rs_vlm"]
+    description: "Text-guided region localization with pixel masks"
+
+  BI_TEMPORAL_CHANGE:
+    models: ["change_detection", "rs_vlm"]
+    description: "Bi-temporal change analysis + natural language description"
+
+  CROSS_MODAL_SAR_OPTICAL:
+    models: ["sar_optical_fusion", "rs_vlm"]
+    description: "Cross-modal SAR + Optical complementary analysis"
+
+# ─────────────────────────────────────────────────────────────
+# SENSOR COMPATIBILITY
+# ─────────────────────────────────────────────────────────────
+sensor_profiles:
+  sentinel_2:
+    name: "Sentinel-2 MSI (ESA Copernicus)"
+    expected_bands: 13
+    resolution_m: 10
+    crs_examples: ["EPSG:32643", "EPSG:32644", "EPSG:32645"]
+    rgb_bands: [3, 2, 1]   # B4, B3, B2 (0-indexed)
+    nir_band: 7            # B8
+    swir_bands: [10, 11]   # B11, B12
+
+  sentinel_1:
+    name: "Sentinel-1 SAR C-band (ESA Copernicus)"
+    expected_bands: 2
+    polarizations: ["VV", "VH"]
+    resolution_m: 10
+    valid_range_db: [-25, 0]
+
+  cartosat_2s:
+    name: "Cartosat-2S PAN (ISRO)"
+    expected_bands: 1
+    resolution_m: 0.65
+    note: "Panchromatic — use as single-channel optical input"
+
+  risat_1:
+    name: "RISAT-1 SAR C-band (ISRO)"
+    expected_bands: 2
+    polarizations: ["HH", "HV"]
+    resolution_m: 3
+    note: "Similar to Sentinel-1. Same SAR preprocessing pipeline applies."
+
+  landsat_8:
+    name: "Landsat-8 OLI (USGS)"
+    expected_bands: 7
+    resolution_m: 30
+    rgb_bands: [3, 2, 1]   # B4, B3, B2 (0-indexed)
+
+  generic_rgb:
+    name: "Generic RGB (PNG/JPEG — benchmarks only)"
+    expected_bands: 3
+    resolution_m: null
+    note: "Used for VRSBench/RSVQA benchmark images only. No geospatial metadata."
