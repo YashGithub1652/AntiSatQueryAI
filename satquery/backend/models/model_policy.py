@@ -37,6 +37,9 @@ ALLOW_HEURISTIC_GROUNDING = env_flag(
 ALLOW_BASE_CLIP_FALLBACK = env_flag(
     "SATQUERY_ALLOW_BASE_CLIP_FALLBACK", False
 )
+ALLOW_HEURISTIC_VQA = env_flag(
+    "SATQUERY_ALLOW_HEURISTIC_VQA", False
+)
 
 
 def checkpoint_exists(*relative_parts: str) -> bool:
