@@ -253,24 +253,6 @@ class GroundingEngine:
             # Never fabricate detections. A missing/weak detector must return
             # an empty result rather than arbitrary image quadrants.
             return [], "DynamicSpectralSpatialGrounding (no qualifying regions)"
-            
-        if not candidates:
-            # Legacy saliency fallback intentionally unreachable.
-            h_half, w_half = h // 2, w // 2
-            quadrants = [
-                (12, 12, w_half - 12, h_half - 12, "Northern Sector"),
-                (w_half + 12, 12, w - 12, h_half - 12, "Northeastern Quadrant"),
-                (12, h_half + 12, w_half - 12, h - 12, "Southwestern Parcel"),
-                (w_half + 12, h_half + 12, w - 12, h - 12, "Southeastern Basin"),
-            ]
-            for q_idx, (x1, y1, x2, y2, q_name) in enumerate(quadrants):
-                patch = arr[y1:y2, x1:x2]
-                candidates.append({
-                    "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                    "pixel_count": (x2 - x1) * (y2 - y1),
-                    "confidence": 0.86,
-                    "quadrant_name": f"{target_class} ({q_name})",
-                })
 
         selected = candidates[:5]
         for idx, c in enumerate(selected):
