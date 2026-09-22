@@ -126,15 +126,11 @@ def eval_rsvqa(
 
 
 def _mock_rsvqa_results() -> Dict:
-    """Return baseline published results when dataset not available."""
-    logger.info("Using published GeoChat RSVQA-LR baseline results.")
+    """Return an explicit non-evaluated state; never fabricate benchmark results."""
     return {
-        "yn_accuracy": 89.2,
-        "count_accuracy": 72.1,
-        "presence_accuracy": 84.6,
-        "overall_accuracy": 82.0,
+        "status": "not_evaluated",
         "n_evaluated": 0,
-        "note": "Published GeoChat baseline (dataset not downloaded). Run download_benchmarks.py first."
+        "note": "RSVQA data/model were not available for an actual evaluation run."
     }
 
 
@@ -190,12 +186,10 @@ def eval_vrsbench_vqa(
 
 
 def _mock_vrsbench_results() -> Dict:
-    logger.info("Using published GeoChat VRSBench baseline results.")
     return {
-        "em_accuracy": 78.4,
-        "bleu1": 71.2,
+        "status": "not_evaluated",
         "n_evaluated": 0,
-        "note": "Published GeoChat baseline (dataset not downloaded)."
+        "note": "VRSBench data/model were not available for an actual evaluation run."
     }
 
 
@@ -252,10 +246,9 @@ def eval_cdvqa(
 
 def _mock_cdvqa_results() -> Dict:
     return {
-        "accuracy": 91.4,
-        "f1": 88.7,
+        "status": "not_evaluated",
         "n_evaluated": 0,
-        "note": "Published ChangeFormer/SatQuery baseline (dataset not downloaded)."
+        "note": "CDVQA data/model were not available for an actual evaluation run."
     }
 
 
