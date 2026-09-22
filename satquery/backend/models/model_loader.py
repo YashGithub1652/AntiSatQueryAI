@@ -252,18 +252,25 @@ class ModelLoader:
             # Try to import from local clone or installed package
             try:
                 from models.ChangeFormer import ChangeFormer
-            except ImportError:
-                # Fallback: lightweight CNN-based change detector using torchvision
+            except ImportError as e:
+                from .model_policy import ALLOW_UNTRAINED_CHANGE_FALLBACK
+                message = (
+                    "Official ChangeFormer implementation is not installed. "
+                    "Install the official ChangeFormer implementation and provide "
+                    "a trained checkpoint before enabling scientific change inference."
+                )
+                if not ALLOW_UNTRAINED_CHANGE_FALLBACK:
+                    self._load_status["changeformer"] = "UNAVAILABLE: official implementation missing"
+                    raise RuntimeError(message) from e
                 logger.warning(
-                    "ChangeFormer not found as installed package. "
-                    "Using ResNet-based siamese change detector fallback. "
-                    "Clone: https://github.com/justchenhao/ChangeFormer"
+                    "%s SATQUERY_ALLOW_UNTRAINED_CHANGE_FALLBACK is enabled; "
+                    "using the untrained demo fallback.", message
                 )
                 from .changeformer_fallback import SiameseChangeDetector
                 model = SiameseChangeDetector().to(DEVICE)
                 model.eval()
                 self._changeformer_model = model
-                self._load_status["changeformer"] = "SiameseChangeDetector-ResNet18 (fallback)"
+                self._load_status["changeformer"] = "UNTRAINED_DEMO: SiameseChangeDetector-ResNet18"
                 logger.info(f"Siamese change detector loaded in {time.time() - t0:.1f}s")
                 return self._changeformer_model
 
@@ -271,6 +278,8 @@ class ModelLoader:
             model = ChangeFormer()
             checkpoint_paths = [
                 os.path.join(os.path.dirname(__file__), "..", "..", "models", "ChangeFormer_LEVIR.pth"),
+                os.path.join(os.path.dirname(__file__), "..", "..", "models", "checkpoints", "ChangeFormer_LEVIR", "best_ckpt.pt"),
+                os.path.join(os.path.dirname(__file__), "..", "..", "models", "checkpoints", "ChangeFormer_LEVIR.pth"),
                 os.path.expanduser("~/.cache/satquery/ChangeFormer_LEVIR.pth"),
             ]
             for cp in checkpoint_paths:
@@ -280,8 +289,19 @@ class ModelLoader:
                     self._load_status["changeformer"] = f"ChangeFormer-V2 LEVIR-CD checkpoint"
                     break
             else:
-                logger.warning("ChangeFormer checkpoint not found. Using random weights (demo only).")
-                self._load_status["changeformer"] = "ChangeFormer (random weights — download checkpoint)"
+                from .model_policy import ALLOW_UNTRAINED_CHANGE_FALLBACK
+                if not ALLOW_UNTRAINED_CHANGE_FALLBACK:
+                    self._load_status["changeformer"] = "UNAVAILABLE: trained checkpoint missing"
+                    raise FileNotFoundError(
+                        "ChangeFormer implementation is available, but no trained checkpoint "
+                        "was found. Add models/ChangeFormer_LEVIR.pth or enable "
+                        "SATQUERY_ALLOW_UNTRAINED_CHANGE_FALLBACK only for development demos."
+                    )
+                logger.warning(
+                    "No trained ChangeFormer checkpoint found; using untrained weights "
+                    "because SATQUERY_ALLOW_UNTRAINED_CHANGE_FALLBACK is enabled."
+                )
+                self._load_status["changeformer"] = "UNTRAINED_DEMO: ChangeFormer random weights"
 
             model = model.to(DEVICE)
             model.eval()
@@ -325,7 +345,11 @@ class ModelLoader:
                         self._load_status["rsvg"] = "RSVG-Swin-Transformer (VRSBench checkpoint)"
                         break
                 else:
-                    self._load_status["rsvg"] = "RSVG (random weights — download checkpoint)"
+                    # Treat a missing RSVG checkpoint as model unavailability so
+                    # the existing GroundingDINO fallback can be selected.
+                    raise ImportError(
+                        "RSVG checkpoint rsvg_best.pth is missing"
+                    )
 
                 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
@@ -404,7 +428,8 @@ class ModelLoader:
     # ──────────────────────────────────────────────────────────
 
     def get_status(self) -> Dict[str, Any]:
-        """Return loading status for all models — used in /api/v1/models endpoint."""
+        """Return runtime status plus on-disk model readiness."""
+        from .model_policy import readiness_snapshot
         return {
             "device": DEVICE,
             "cuda_available": (TORCH_AVAILABLE and torch.cuda.is_available()),
@@ -422,6 +447,7 @@ class ModelLoader:
                 "sam": self._sam_predictor is not None,
             },
             "load_status": self._load_status,
+            "model_readiness": readiness_snapshot(),
         }
 
 

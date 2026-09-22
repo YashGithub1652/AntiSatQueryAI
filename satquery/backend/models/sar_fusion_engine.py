@@ -49,132 +49,108 @@ logger = logging.getLogger(__name__)
 # SAR Encoder (ResNet-50 with 2-channel input)
 # ──────────────────────────────────────────────────────────────
 
-class SAREncoder(nn_Module):
-    """
-    ResNet-50 modified to accept 2-channel SAR input (VV, VH).
-    Initialized from ImageNet weights for all layers except the first conv.
-    """
-
+class SARBranch(nn_Module):
     def __init__(self, out_dim: int = 256):
-        if not TORCH_AVAILABLE:
-            return
         super().__init__()
-        import torchvision.models as tv_models
-
-        resnet = tv_models.resnet50(weights=tv_models.ResNet50_Weights.IMAGENET1K_V1)
-
-        # Replace first conv: 3 channels → 2 channels (VV, VH)
         self.conv1 = nn.Conv2d(2, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        with torch.no_grad():
-            self.conv1.weight.copy_(resnet.conv1.weight[:, :2, :, :])
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_block(64, 128)
+        self.layer2 = self._make_block(128, 256)
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.proj = nn.Linear(256, out_dim)
 
-        self.bn1 = resnet.bn1
-        self.relu = resnet.relu
-        self.maxpool = resnet.maxpool
-        self.layer1 = resnet.layer1
-        self.layer2 = resnet.layer2
-        self.layer3 = resnet.layer3
-
-        # Project 1024-d (layer3 output) to fusion dim
-        self.proj = nn.Sequential(
-            nn.Conv2d(1024, out_dim, kernel_size=1),
-            nn.BatchNorm2d(out_dim),
+    def _make_block(self, in_c, out_c):
+        return nn.Sequential(
+            nn.Conv2d(in_c, out_c, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_c),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_c, out_c, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_c),
             nn.ReLU(inplace=True),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
+        x = self.maxpool(self.relu(self.bn1(self.conv1(x))))
         x = self.layer1(x)
         x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.proj(x)
-        return x
+        x = self.pool(x).flatten(1)
+        return F.normalize(self.proj(x), dim=-1)
 
 
-# ──────────────────────────────────────────────────────────────
-# Cross-Attention Fusion Module
-# ──────────────────────────────────────────────────────────────
-
-class CrossAttentionFusion(nn_Module):
-    """
-    Bi-directional Multi-Head Cross-Attention between SAR and Optical features.
-    SAR queries Optical, Optical queries SAR, then fused via projection.
-    """
-
-    def __init__(self, dim: int = 256, n_heads: int = 8):
-        if not TORCH_AVAILABLE:
-            return
+class OpticalBranch(nn_Module):
+    def __init__(self, out_dim: int = 256):
         super().__init__()
-        self.sar_to_optical_attn = nn.MultiheadAttention(
-            embed_dim=dim, num_heads=n_heads, batch_first=True
-        )
-        self.optical_to_sar_attn = nn.MultiheadAttention(
-            embed_dim=dim, num_heads=n_heads, batch_first=True
-        )
-        self.norm_sar = nn.LayerNorm(dim)
-        self.norm_opt = nn.LayerNorm(dim)
-        self.fusion_proj = nn.Sequential(
-            nn.Linear(dim * 2, dim),
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_block(64, 128)
+        self.layer2 = self._make_block(128, 256)
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.proj = nn.Linear(256, out_dim)
+
+    def _make_block(self, in_c, out_c):
+        return nn.Sequential(
+            nn.Conv2d(in_c, out_c, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_c),
             nn.ReLU(inplace=True),
+            nn.Conv2d(out_c, out_c, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_c),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.maxpool(self.relu(self.bn1(self.conv1(x))))
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.pool(x).flatten(1)
+        return F.normalize(self.proj(x), dim=-1)
+
+
+class CrossModalAttentionFusion(nn_Module):
+    def __init__(self, dim: int = 256, num_heads: int = 8):
+        super().__init__()
+        self.mha_sar_to_opt = nn.MultiheadAttention(
+            embed_dim=dim, num_heads=num_heads, batch_first=True
+        )
+        self.mha_opt_to_sar = nn.MultiheadAttention(
+            embed_dim=dim, num_heads=num_heads, batch_first=True
+        )
+        self.norm1 = nn.LayerNorm(dim)
+        self.norm2 = nn.LayerNorm(dim)
+        self.fusion_fc = nn.Sequential(
+            nn.Linear(dim * 2, dim),
+            nn.GELU(),
             nn.Linear(dim, dim),
+            nn.LayerNorm(dim),
         )
 
-    def forward(
-        self, sar_feat: torch.Tensor, opt_feat: torch.Tensor
-    ) -> torch.Tensor:
-        B, C, H, W = sar_feat.shape
-        sar_seq = sar_feat.flatten(2).permute(0, 2, 1)  # [B, HW, C]
-        opt_seq = opt_feat.flatten(2).permute(0, 2, 1)  # [B, HW, C]
-
-        sar_enriched, _ = self.sar_to_optical_attn(sar_seq, opt_seq, opt_seq)
-        opt_enriched, _ = self.optical_to_sar_attn(opt_seq, sar_seq, sar_seq)
-
-        sar_enriched = self.norm_sar(sar_seq + sar_enriched)
-        opt_enriched = self.norm_opt(opt_seq + opt_enriched)
-
-        fused_seq = self.fusion_proj(
-            torch.cat([sar_enriched, opt_enriched], dim=-1)
-        )
-
-        fused = fused_seq.permute(0, 2, 1).reshape(B, C, H, W)
-        return fused
+    def forward(self, f_sar: torch.Tensor, f_opt: torch.Tensor):
+        s = f_sar.unsqueeze(1)
+        o = f_opt.unsqueeze(1)
+        s_attended, _ = self.mha_sar_to_opt(s, o, o)
+        s_out = self.norm1(s + s_attended)
+        o_attended, _ = self.mha_opt_to_sar(o, s, s)
+        o_out = self.norm2(o + o_attended)
+        combined = torch.cat([s_out.squeeze(1), o_out.squeeze(1)], dim=-1)
+        fused = self.fusion_fc(combined)
+        return fused, F.cosine_similarity(f_sar, f_opt, dim=-1)
 
 
 class SAROpticalFusionModel(nn_Module):
-    """
-    Full SAR-Optical Cross-Attention Fusion model.
-    Encodes SAR and Optical separately, fuses via cross-attention.
-    """
-
-    def __init__(self, dim: int = 256):
-        if not TORCH_AVAILABLE:
-            return
+    def __init__(self, feat_dim: int = 256):
         super().__init__()
-        self.sar_encoder = SAREncoder(out_dim=dim)
-        self.optical_proj = nn.Sequential(
-            nn.Linear(512, dim),
-            nn.ReLU(inplace=True),
-        )
-        self.fusion = CrossAttentionFusion(dim=dim, n_heads=8)
-        self.global_pool = nn.AdaptiveAvgPool2d(1)
+        self.sar_branch = SARBranch(out_dim=feat_dim)
+        self.optical_branch = OpticalBranch(out_dim=feat_dim)
+        self.fusion = CrossModalAttentionFusion(dim=feat_dim, num_heads=8)
 
-    def forward(
-        self,
-        sar_tensor: torch.Tensor,
-        opt_features: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        sar_feat = self.sar_encoder(sar_tensor)
-
-        B, C_sar, H, W = sar_feat.shape
-        opt_proj = self.optical_proj(opt_features)
-        opt_feat = opt_proj.unsqueeze(-1).unsqueeze(-1).expand(B, -1, H, W)
-
-        fused = self.fusion(sar_feat, opt_feat)
-        return sar_feat, opt_feat, fused
-
+    def forward(self, sar_img: torch.Tensor, opt_img: torch.Tensor):
+        f_sar = self.sar_branch(sar_img)
+        f_opt = self.optical_branch(opt_img)
+        fused, sim = self.fusion(f_sar, f_opt)
+        return f_sar, f_opt, fused, sim
 
 
 class SARFusionEngine:
@@ -187,6 +163,8 @@ class SARFusionEngine:
         self.loader = get_model_loader()
         self._device = "cuda" if (torch is not None and hasattr(torch, "cuda") and torch.cuda.is_available()) else "cpu"
         self._fusion_model: Optional[SAROpticalFusionModel] = None
+        self._is_adapted_checkpoint = False
+        self._checkpoint_path: Optional[str] = None
 
     def _get_fusion_model(self) -> SAROpticalFusionModel:
         if self._fusion_model is None:
@@ -197,6 +175,7 @@ class SARFusionEngine:
                 os.path.join("models", "sar_optical_fusion.pth"),
             ]
             loaded = False
+            checkpoint_path_used = None
             for p in ckpt_paths:
                 if os.path.exists(p):
                     try:
@@ -207,18 +186,19 @@ class SARFusionEngine:
                                 ckpt = pickle.load(f)
                         raw_sd = ckpt.get("model_state_dict", ckpt)
                         sd = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in raw_sd.items()}
-                        self._fusion_model.load_state_dict(sd, strict=False)
+                        self._fusion_model.load_state_dict(sd, strict=True)
                         loaded = True
+                        self._checkpoint_path = p
                         self._is_adapted_checkpoint = True
-                        logger.info(f"Loaded trained BigEarthNet SAR-Optical fusion checkpoint from {p}")
+                        logger.info("Loaded SAR-optical fusion checkpoint with exact training/inference architecture from %s", p)
                         break
                     except Exception as e:
                         logger.warning(f"Error loading SAR-optical checkpoint from {p}: {e}")
             if not loaded:
                 self._is_adapted_checkpoint = False
-                logger.info(
-                    "SAR-Optical fusion model: Checkpoint not found. "
-                    "Running with calibrated physical SAR backscatter interpretation."
+                raise FileNotFoundError(
+                    "Trained SAR-optical fusion checkpoint could not be loaded. "
+                    "The inference architecture must exactly match the checkpoint."
                 )
             self._fusion_model.eval()
         return self._fusion_model
@@ -273,14 +253,7 @@ class SARFusionEngine:
             fusion_overlay_b64 = self._visualize_attention(fused_feat, optical_array)
             fusion_stats = self._compute_fusion_stats(sar_feat, opt_feat, fused_feat)
         else:
-            confidence = 0.91
-            fusion_overlay_b64 = optical_preview_b64
-            fusion_stats = {
-                "sar_feature_norm": 18.4,
-                "optical_feature_norm": 22.1,
-                "fusion_feature_norm": 28.6,
-                "sar_optical_cosine_sim": 0.892,
-            }
+            raise RuntimeError("PyTorch is required for trained SAR-optical fusion inference.")
 
         # Inject real physical radar data into fusion_stats for the frontend
         fusion_stats["sar_vv_hist"] = vv_hist
@@ -304,7 +277,7 @@ class SARFusionEngine:
         is_adapted = getattr(self, "_is_adapted_checkpoint", False)
         fusion_stats["trained_checkpoint"] = is_adapted
         fusion_stats["interpretation_mode"] = "Deep Cross-Attention Feature Fusion (BigEarthNet-v2)" if is_adapted else "Calibrated Physical SAR Backscatter + GeoChat Synthesis"
-        model_used = "CrossModal-ResNet50 + RemoteCLIP-ViT + 8-Head Cross-Attention (BigEarthNet Adapted Checkpoint)"
+        model_used = "SAR-Optical Cross-Attention (trained checkpoint)" if is_adapted else "UNAVAILABLE"
 
         optical_findings = self._analyze_optical(optical_pil, optical_meta)
         sar_findings = self._analyze_sar(vv_db, vh_db, pol_ratio, water_fraction, urban_double_bounce, veg_volume, sar_meta)
@@ -350,12 +323,12 @@ class SARFusionEngine:
                 q_feat = clip_model.encode_text(q_tok)
                 q_feat_norm = q_feat / q_feat.norm(dim=-1, keepdim=True)
                 sim = (img_feat_norm @ q_feat_norm.T).item()
-                confidence = round(max(0.72, min(0.96, (sim + 1.0) / 2.0)), 3)
+                confidence = round(max(0.0, min(1.0, (sim + 1.0) / 2.0)), 3)
 
             return img_feat, confidence
         except Exception as e:
             logger.warning(f"RemoteCLIP feature extraction fallback: {e}")
-            return torch.randn(1, 512, device=self._device), 0.91
+            raise RuntimeError(f"RemoteCLIP feature extraction failed: {e}") from e
 
     def _analyze_optical(self, pil: Image.Image, meta: Optional[Dict]) -> str:
         """Analyze optical imagery using spectral and color characteristics."""
@@ -414,36 +387,17 @@ class SARFusionEngine:
     # VISUALIZATION
     # ──────────────────────────────────────────────────────────
 
-    def _visualize_attention(
+    def _visualize_fusion_embedding(
         self, fused_feat: torch.Tensor, optical_array: np.ndarray
     ) -> str:
-        """Create attention heatmap overlay on optical image."""
-        # Global average over feature channels → attention map
-        attn = fused_feat.squeeze(0).mean(0).cpu().numpy()  # [H, W]
-        attn = (attn - attn.min()) / (attn.max() - attn.min() + 1e-8)
-
-        # Resize to image size
-        target_h, target_w = optical_array.shape[1], optical_array.shape[2]
-        attn_pil = Image.fromarray((attn * 255).astype(np.uint8))
-        attn_pil = attn_pil.resize((target_w, target_h), Image.BILINEAR)
-        attn_np = np.array(attn_pil) / 255.0
-
-        # Apply colormap: hot → attention heatmap
-        heatmap = np.zeros((target_h, target_w, 3), dtype=np.float32)
-        heatmap[:, :, 0] = np.clip(attn_np * 2, 0, 1)          # Red channel
-        heatmap[:, :, 1] = np.clip((attn_np - 0.5) * 2, 0, 1)  # Green (high vals)
-        heatmap[:, :, 2] = 0.0                                   # No blue
-
-        # Blend with optical image
+        """Return optical evidence; the trained model produces a global embedding, not a pixel attention map."""
         if optical_array.shape[0] >= 3:
             opt_rgb = optical_array[:3].transpose(1, 2, 0)
         else:
             opt_rgb = np.repeat(optical_array[:1].transpose(1, 2, 0), 3, axis=-1)
-
-        blended = 0.6 * opt_rgb + 0.4 * heatmap
-        blended = (np.clip(blended, 0, 1) * 255).astype(np.uint8)
-
-        return self._pil_to_b64(Image.fromarray(blended))
+        return self._pil_to_b64(
+            Image.fromarray((np.clip(opt_rgb, 0, 1) * 255).astype(np.uint8))
+        )
 
     def _make_sar_preview_b64(self, sar_array: np.ndarray) -> str:
         """Generate SAR false-color preview."""

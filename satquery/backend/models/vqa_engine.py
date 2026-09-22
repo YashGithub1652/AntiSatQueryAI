@@ -124,11 +124,18 @@ class VQAEngine:
                 logger.warning(f"GeoChat inference failed: {e}. Falling back to dynamic spectral diagnostic.")
 
         if answer is None:
-            # High-precision dynamic pixel-based spectral/spatial diagnostic
-            answer, land_cover_probs, confidence = self._run_spectral_diagnostic(
+            from .model_policy import ALLOW_HEURISTIC_VQA
+            if not ALLOW_HEURISTIC_VQA:
+                raise RuntimeError(
+                    "RS-VLM inference is unavailable. A trained GeoChat/BigEarthNet "
+                    "adapter is required for scientific VQA/captioning. "
+                    "Set SATQUERY_ALLOW_HEURISTIC_VQA=true only for development demos."
+                )
+            answer, land_cover_probs, _ = self._run_spectral_diagnostic(
                 image_array, query, metadata, task_type
             )
-            model_name = "SatQuery Spectral-Spatial Diagnostic Engine (ISRO/NRSC Level-2A)"
+            confidence = 0.0
+            model_name = "UNTRAINED_DEMO: Spectral-Spatial Diagnostic"
 
         # Optionally refine confidence with RemoteCLIP if available and non-blocking
         if not land_cover_probs:
@@ -252,7 +259,7 @@ class VQAEngine:
             return round(confidence, 3), land_cover_probs
         except Exception as e:
             logger.warning(f"CLIP confidence scoring error: {e}")
-            return 0.88, {"agricultural land": 0.60, "vegetation": 0.25, "water body": 0.15}
+            return 0.0, {}
 
     def _run_spectral_diagnostic(
         self,
