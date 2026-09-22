@@ -157,7 +157,20 @@ class GroundingEngine:
             except Exception as e:
                 logger.info(f"Neural grounding unavailable: {e}. Running dynamic spectral-spatial grounding.")
 
-        return self._dynamic_spectral_spatial_grounding(pil_img, query, threshold)
+        from .model_policy import ALLOW_HEURISTIC_GROUNDING
+        if not ALLOW_HEURISTIC_GROUNDING:
+            raise RuntimeError(
+                "No trained visual-grounding model is available. "
+                "Install RSVG with rsvg_best.pth or GroundingDINO before "
+                "returning a scientific grounding result."
+            )
+        logger.warning(
+            "Using heuristic spectral-spatial grounding because "
+            "SATQUERY_ALLOW_HEURISTIC_GROUNDING is enabled."
+        )
+        return self._dynamic_spectral_spatial_grounding(
+            pil_img, query, threshold
+        )
 
     def _dynamic_spectral_spatial_grounding(
         self, pil_img: Image.Image, query: str, threshold: float
@@ -237,7 +250,12 @@ class GroundingEngine:
         candidates.sort(key=lambda c: c["pixel_count"], reverse=True)
 
         if not candidates:
-            # Saliency sector fallback based on image texture
+            # Never fabricate detections. A missing/weak detector must return
+            # an empty result rather than arbitrary image quadrants.
+            return [], "DynamicSpectralSpatialGrounding (no qualifying regions)"
+            
+        if not candidates:
+            # Legacy saliency fallback intentionally unreachable.
             h_half, w_half = h // 2, w // 2
             quadrants = [
                 (12, 12, w_half - 12, h_half - 12, "Northern Sector"),
