@@ -163,6 +163,8 @@ class SARFusionEngine:
         self.loader = get_model_loader()
         self._device = "cuda" if (torch is not None and hasattr(torch, "cuda") and torch.cuda.is_available()) else "cpu"
         self._fusion_model: Optional[SAROpticalFusionModel] = None
+        self._is_adapted_checkpoint = False
+        self._checkpoint_path: Optional[str] = None
 
     def _get_fusion_model(self) -> SAROpticalFusionModel:
         if self._fusion_model is None:
@@ -186,7 +188,7 @@ class SARFusionEngine:
                         sd = {k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in raw_sd.items()}
                         self._fusion_model.load_state_dict(sd, strict=True)
                         loaded = True
-                        checkpoint_path_used = p
+                        self._checkpoint_path = p
                         self._is_adapted_checkpoint = True
                         logger.info("Loaded SAR-optical fusion checkpoint with exact training/inference architecture from %s", p)
                         break
