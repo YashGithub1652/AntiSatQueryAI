@@ -278,6 +278,8 @@ class ModelLoader:
             model = ChangeFormer()
             checkpoint_paths = [
                 os.path.join(os.path.dirname(__file__), "..", "..", "models", "ChangeFormer_LEVIR.pth"),
+                os.path.join(os.path.dirname(__file__), "..", "..", "models", "checkpoints", "ChangeFormer_LEVIR", "best_ckpt.pt"),
+                os.path.join(os.path.dirname(__file__), "..", "..", "models", "checkpoints", "ChangeFormer_LEVIR.pth"),
                 os.path.expanduser("~/.cache/satquery/ChangeFormer_LEVIR.pth"),
             ]
             for cp in checkpoint_paths:
@@ -343,9 +345,10 @@ class ModelLoader:
                         self._load_status["rsvg"] = "RSVG-Swin-Transformer (VRSBench checkpoint)"
                         break
                 else:
-                    self._load_status["rsvg"] = "UNAVAILABLE: RSVG checkpoint missing"
-                    raise FileNotFoundError(
-                        "RSVG implementation is available but rsvg_best.pth is missing."
+                    # Treat a missing RSVG checkpoint as model unavailability so
+                    # the existing GroundingDINO fallback can be selected.
+                    raise ImportError(
+                        "RSVG checkpoint rsvg_best.pth is missing"
                     )
 
                 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
