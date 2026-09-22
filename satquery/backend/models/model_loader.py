@@ -428,7 +428,8 @@ class ModelLoader:
     # ──────────────────────────────────────────────────────────
 
     def get_status(self) -> Dict[str, Any]:
-        """Return loading status for all models — used in /api/v1/models endpoint."""
+        """Return runtime status plus on-disk model readiness."""
+        from .model_policy import readiness_snapshot
         return {
             "device": DEVICE,
             "cuda_available": (TORCH_AVAILABLE and torch.cuda.is_available()),
@@ -446,6 +447,7 @@ class ModelLoader:
                 "sam": self._sam_predictor is not None,
             },
             "load_status": self._load_status,
+            "model_readiness": readiness_snapshot(),
         }
 
 
