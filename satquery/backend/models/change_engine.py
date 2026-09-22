@@ -143,9 +143,11 @@ class ChangeDetectionEngine:
             change_stats, t1_meta, t2_meta
         )
 
-        # Confidence: higher when model is decisive (probabilities near 0 or 1)
+        # Confidence is deliberately conservative. Do not convert model
+        # decisiveness into an unjustified high confidence score.
         certainty = float(np.mean(np.abs(change_prob - 0.5)) * 2)
-        confidence = round(min(0.96, max(0.82, 0.80 + 0.16 * certainty)), 3)
+        is_trained = not model_name.startswith("UNTRAINED_DEMO")
+        confidence = round((0.50 + 0.30 * certainty) if is_trained else 0.0, 3)
 
         return {
             "change_map_b64": change_map_b64,
@@ -244,11 +246,11 @@ class ChangeDetectionEngine:
 
         return (
             f"Bi-Temporal Remote Sensing Change Assessment ({sensor.replace('_', ' ').title()} · {d1} vs {d2}):\n"
-            f"• Verified Classification: {change_type}\n"
+            f"• Detected Change Pattern: {change_type}\n"
             f"• Total Changed Extent: {change_pct:.1f}% of monitored AOI ({area_km2:.2f} km² / {area_km2*100:.1f} hectares)\n"
             f"• Cluster Topology: {n_reg} discrete change clusters identified. Largest contiguous polygon spans {largest_km2:.2f} km² ({largest_ha} ha)\n"
             f"• Radiometric Evidence: {impact}\n"
-            f"• ISRO/NRSC Technical Advisory: {advisory}"
+            f"• Interpretation note: This description is derived from the detected bi-temporal pattern and should be validated against task-specific ground truth for operational use."
         )
 
     # ──────────────────────────────────────────────────────────
