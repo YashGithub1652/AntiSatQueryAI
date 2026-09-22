@@ -41,7 +41,7 @@ class SiameseChangeDetector(nn.Module):
             nn.BatchNorm2d(16),
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(16, 1, kernel_size=4, stride=2, padding=1),      # 256x256
-            nn.Sigmoid()
+            # Return logits. ChangeDetectionEngine applies sigmoid exactly once.
         )
 
     def forward(self, t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
@@ -50,11 +50,11 @@ class SiameseChangeDetector(nn.Module):
             t1: [B, 3, H, W] normalized T1 image
             t2: [B, 3, H, W] normalized T2 image
         Returns:
-            change_map: [B, 1, H, W] change probability in [0, 1]
+            change_logits: [B, 1, H, W] raw change logits
         """
         f1 = self.encoder(t1)  # [B, 512, 8, 8]
         f2 = self.encoder(t2)  # [B, 512, 8, 8]
 
         diff = torch.abs(f1 - f2)      # Change magnitude
-        change_map = self.decoder(diff)
-        return change_map
+        change_logits = self.decoder(diff)
+        return change_logits
